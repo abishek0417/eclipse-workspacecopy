@@ -1,1 +1,101 @@
-hi
+package veri;
+
+import java.time.Duration;
+import java.util.List;
+
+import org.openqa.selenium.*;
+import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.edge.EdgeDriver;
+import org.openqa.selenium.firefox.FirefoxDriver;
+import org.testng.annotations.*;
+
+public class veri1 {
+
+    WebDriver driver;
+    String mobileName;
+
+    @BeforeClass
+    @Parameters({"browser"})
+    public void setUp(String browser) {
+        browser = browser.trim().toLowerCase();
+
+        switch (browser) {
+            case "chrome":
+                driver = new ChromeDriver();
+                break;
+            case "firefox":
+                driver = new FirefoxDriver();
+                break;
+            case "edge":
+                driver = new EdgeDriver();
+                break;
+            default:
+                throw new IllegalArgumentException("Unsupported browser: " + browser);
+        }
+
+        driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
+        driver.manage().window().maximize();
+        driver.get("https://www.verizon.com/");
+    }
+
+    @Test(priority = 1)
+    public void navigateToSmartphones() throws InterruptedException {
+        driver.findElement(By.xpath("//button[@id='gnav20-Shop-L1']")).click();
+        Thread.sleep(2000);
+        driver.findElement(By.xpath("//a[@id='gnav20-Shop-L2-2']")).click();
+        Thread.sleep(2000);
+        driver.findElement(By.xpath("//a[@id='gnav20-Shop-L3-1']")).click();
+        Thread.sleep(5000);
+    }
+
+    @Test(priority = 2)
+    @Parameters({"userinput"})
+    public void clickMobile(String userinput) throws InterruptedException {
+        mobileName = userinput.trim().toLowerCase().replaceAll("[^a-z0-9]", "");  // clean input
+        boolean found = false;
+
+        for (int attempt = 0; attempt < 3; attempt++) {
+            try {
+                List<WebElement> allMobiles = driver.findElements(By.xpath("//a[@data-analyticstrack='gridwall-product-name']"));
+                System.out.println("Total mobiles found: " + allMobiles.size());
+
+                for (WebElement mobile : allMobiles) {
+                    String visibleText = mobile.getText().trim();
+                    String cleanedText = visibleText.toLowerCase().replaceAll("[^a-z0-9]", "");
+
+                    System.out.println("Checking: " + cleanedText);
+
+                    if (cleanedText.contains(mobileName)) {
+                        ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView({block: 'center'});", mobile);
+                        Thread.sleep(1000);
+                        ((JavascriptExecutor) driver).executeScript("arguments[0].click();", mobile);
+                        System.out.println("✅ Clicked on: " + visibleText);
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (found) break;
+
+            } catch (StaleElementReferenceException e) {
+                System.out.println("⚠️ Caught StaleElementReferenceException. Retrying...");
+                Thread.sleep(1000);
+            }
+        }
+
+        if (!found) {
+            System.out.println("❌ Mobile with name '" + mobileName + "' not found.");
+            throw new RuntimeException("Mobile not found: " + mobileName);
+        }
+
+        Thread.sleep(5000);
+    }
+
+    @AfterClass
+    public void tearDown() throws Exception {
+        if (driver != null) {
+            Thread.sleep(3000);
+            driver.quit();
+        }
+    }
+}
